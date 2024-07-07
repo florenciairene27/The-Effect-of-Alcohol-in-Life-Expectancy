@@ -1,0 +1,186 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+------------------------------------------------------------------------
+
+title: "Final Project Draft" author: "Florencia Irene" date: "2022-11-17" output: pdf_document
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Cleaning
+
+1.  Missing values
+
+    ```{r}
+    led <- read.csv(here::here("data/Life Expectancy Data.csv"))
+    ```
+
+    ```{r}
+    library(tidyverse)
+    library(dplyr)
+    library(ggplot2)
+
+    #Pull several variables that are related 
+    life <- led %>%
+      select(Country, Year, Alcohol, Life.expectancy, Status, Income.composition.of.resources, Schooling, BMI)
+
+    #erase missing values
+  life <- na.omit(life)
+    
+
+
+    ```
+
+    | Variable                        | Total Missing Values |
+    |---------------------------------|----------------------|
+    | Life expectancy                 | 10                   |
+    | Alcohol                         | 194                  |
+    | Status                          | \-                   |
+    | Income composition of resources | 167                  |
+    | Schooling                       | 163                  |
+    | BMI                             | 34                   |
+
+    Everything is below 10%, so it is acceptable.
+
+2.  Rename variable & Factor levels
+
+    ```{r}
+    led <- led %>%
+      rename(Education = Schooling, 
+             ICOR = Income.composition.of.resources)%>%
+      mutate(Status = factor(Status))
+    ```
+
+## Exploratory Data Analysis
+
+1.  Summary Statistic
+
+    ```{r}
+    summary(led)
+    ```
+
+2.  Conditions
+
+    1.  Scatter Plot
+
+    ```{r}
+    life %>%
+    ggplot(aes(x = Alcohol, y =Life.expectancy, color = Alcohol)) +
+      geom_point(alpha =0.3 , shape = 16, size = 2) +
+      theme_minimal() +
+      scale_color_gradient(low = "#0091ff", high = "#f0650e")+ 
+      geom_smooth(method = "lm",se= FALSE, show.legend =  FALSE) +
+      labs(title = "Relationship of Life Expectancy and Alcohol", 
+           x = "Alcohol Consumption (in litres of pure alcohol)",
+           y = "Life expectancy(in age)")
+
+    ```
+
+
+2.  Normality
+
+```{r}
+#check the normality
+y <- life$Life.expectancy
+x <- life$Alcohol
+
+mod <- lm(y ~ x, data = life)
+
+qqnorm(resid(mod))
+qqline(resid(mod), col = "red")
+
+
+
+```
+
+3.  Equal variance of residuals
+
+```{r}
+#checking constant variance
+plot(resid(mod)~fitted(mod), main = "Residuals vs fitted")
+abline(h = 0, col = "red")
+```
+
+3.  Result
+
+    ```{r}
+    summary(mod)
+
+    #p value
+    summary(mod)$coefficients[,4] 
+
+    #calculating p value
+    pval <- 1- 9.418124e-89/2
+    pval
+
+    #confidence interval
+    confint(mod)
+
+    #correlation 
+    cor(x, y)
+    ```
+
+**Based on ICOR**
+
+1.  Plot
+
+```{r}
+#install gghighlight 
+install.packages("gghighlight")
+library(gghighlight)
+
+#Plot highlight low icor (<0.5)
+life %>%
+  ggplot(aes(
+    x = Alcohol, 
+    y = Life.expectancy, 
+    color = ICOR))+
+  geom_point( alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Life Expectancy, Alcohol, and ICOR", 
+       x = "Alcohol Consumption (in litres of pure alcohol)",
+       y = "Life expectancy(in age)")+
+  theme_minimal()+scale_color_viridis_b()+
+  gghighlight(ICOR < 0.550)
+
+```
+
+```{r}
+#Plot of Alcohol, life expectancy based on ICOR
+life %>%
+  ggplot(aes(
+    x = Alcohol, 
+    y = Life.expectancy, 
+    color = ICOR))+
+  geom_point( alpha = 0.2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Life Expectancy, Alcohol, and ICOR", 
+       x = "Alcohol Consumption (in litres of pure alcohol)",
+       y = "Life expectancy(in age)")+
+  theme_minimal()+scale_color_viridis_b()
+```
+
+```{r}
+#summary statistic of alcohol consumption and life expectancy based on ICOR
+life %>%
+  select(Alcohol, Life.expectancy, ICOR) %>% 
+  filter (ICOR >= 0.5)%>%
+  summarise (mean_alcohol = mean(Alcohol),
+             sd_Alcohol = sd(Alcohol),
+             mean_life.expectancy = mean(Life.expectancy),
+             sd_life.expectancy = sd(Life.expectancy))
+
+life %>%
+  select(Alcohol, Life.expectancy, ICOR) %>% 
+  filter (ICOR < 0.5)%>%
+  summarise (mean_alcohol = mean(Alcohol),
+             sd_Alcohol = sd(Alcohol),
+             mean_life.expectancy = mean(Life.expectancy),
+             sd_life.expectancy = sd(Life.expectancy))
+
+```
